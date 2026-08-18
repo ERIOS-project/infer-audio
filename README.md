@@ -1,6 +1,6 @@
 # infer-audio
 
-Custom [vLLM](https://github.com/vllm-project/vllm) serving image with **audio dependencies preinstalled**, running as a **non-root user**, built to serve the ASR model [CohereLabs/cohere-transcribe-03-2026](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026) on Kubernetes.
+Custom [vLLM](https://github.com/vllm-project/vllm) serving image with **audio dependencies preinstalled**, running as a **non-root user**, built to serve **any audio model supported by vLLM** (ASR, speech-to-text, audio-language models — e.g. [CohereLabs/cohere-transcribe-03-2026](https://huggingface.co/CohereLabs/cohere-transcribe-03-2026), Whisper, Qwen-Audio, ...) on Kubernetes.
 
 The official `vllm/vllm-openai` image does not ship the audio extras, which forces a `pip install` at container startup. This repo produces an **immutable image** with everything baked in.
 
