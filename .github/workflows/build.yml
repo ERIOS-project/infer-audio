@@ -1,0 +1,95 @@
+name: Build, scan and push vLLM audio image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile
+      - .github/workflows/build.yml
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/erios-project/infer-audio
+  VLLM_VERSION: v0.27.1
+  TRIVY_IMAGE: ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-scan-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk space on runner
+        run: |
+          echo "Disk before cleanup:"
+          df -h /
+          sudo rm -rf /usr/local/lib/android      # Android SDK (~9 GB)
+          sudo rm -rf /usr/share/dotnet           # .NET SDK (~1.5 GB)
+          sudo rm -rf /opt/ghc /usr/local/.ghcup  # Haskell (~5 GB)
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          echo "Disk after cleanup:"
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build locally WITHOUT pushing, and load the image into the local
+      # Docker daemon so Trivy can scan it before anything reaches the registry.
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VLLM_VERSION }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Gate: fail the job (and therefore block the push) on any CRITICAL or
+      # HIGH vulnerability that has an available fix.
+      - name: Trivy scan (blocks push on CRITICAL/HIGH)
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$HOME/.cache/trivy:/root/.cache/trivy" \
+            "$TRIVY_IMAGE" image \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --format table \
+            "$IMAGE:$VLLM_VERSION"
+
+      - name: Push image
+        run: |
+          docker push "$IMAGE:$VLLM_VERSION"
+          docker push "$IMAGE:latest"
+
+      - name: Report pushed image digest
+        run: |
+          DIGEST=$(docker buildx imagetools inspect "$IMAGE:$VLLM_VERSION" --format '{{json .Manifest}}' | jq -r '.digest')
+          {
+            echo "## Image published"
+            echo ""
+            echo '```'
+            echo "$IMAGE@$DIGEST"
+            echo '```'
+            echo ""
+            echo "Tags: \`$VLLM_VERSION\`, \`latest\`"
+          } >> "$GITHUB_STEP_SUMMARY"
