@@ -1,0 +1,11 @@
+# Accepted findings — vulnerable copies vendored INSIDE pip itself
+# (declared in pip/_vendor/vendor.txt of pip 26.2.1). They are not importable
+# at runtime and pip is never invoked in this immutable serving image.
+# The real runtime packages are patched in the Dockerfile
+# (msgpack >= 1.2.1, setuptools >= 78.1.1).
+
+# msgpack 1.1.2 vendored in pip/_vendor/msgpack
+GHSA-6v7p-g79w-8964
+
+# setuptools 70.3.0 vendored in pip/_vendor (pkg_resources)
+CVE-2025-47273

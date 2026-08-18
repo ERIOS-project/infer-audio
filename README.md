@@ -13,26 +13,38 @@ The official `vllm/vllm-openai` image does not ship the audio extras, which forc
 - **Runtime user:** non-root, uid/gid `10001:10001`
 - **Entrypoint/CMD:** inherited unchanged from the base image (OpenAI-compatible API server)
 
-## Build pipeline
+## Build, scan and push (local)
 
-The [build workflow](.github/workflows/build.yml) runs on:
+The image is built, scanned and pushed manually from a workstation. The Trivy scan is a hard gate: **do not push if it fails**.
 
-- every push to `main` that touches the `Dockerfile` or the workflow itself,
-- manual trigger via **workflow_dispatch** (Actions tab → *Build, scan and push vLLM audio image* → *Run workflow*).
+```bash
+IMAGE=ghcr.io/erios-project/infer-audio
+VLLM_VERSION=v0.27.1
 
-The order of operations is a security gate:
+# 1. Build
+docker build -t $IMAGE:$VLLM_VERSION -t $IMAGE:latest .
 
-1. **Build locally** (no push) — the image is loaded into the runner's Docker daemon.
-2. **Trivy scan** — the image is scanned with Trivy `0.72.0` (pinned by digest) using `--severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed`. Any **critical or high vulnerability with an available fix fails the job**, and the image is never pushed. The full report is printed in table format in the job log.
-3. **Push to GHCR** — only reached if the scan passes. Both `v0.27.1` and `latest` tags are pushed.
+# 2. Scan (blocks on any fixable CRITICAL/HIGH vulnerability)
+docker run --rm \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "$HOME/.cache/trivy:/root/.cache/trivy" \
+  -v "$PWD/.trivyignore:/.trivyignore:ro" \
+  ghcr.io/aquasecurity/trivy:0.72.0@sha256:cffe3f5161a47a6823fbd23d985795b3ed72a4c806da4c4df16266c02accdd6f \
+  image --ignorefile /.trivyignore --timeout 30m \
+  --severity CRITICAL,HIGH --exit-code 1 --ignore-unfixed --format table \
+  $IMAGE:$VLLM_VERSION
 
-The workflow also frees ~15 GB of disk on the `ubuntu-latest` runner before building (the base image is >10 GB) and uses the GitHub Actions buildx cache to avoid re-downloading the base on every run.
+# 3. Push (only if step 2 exited 0)
+docker login ghcr.io   # PAT with write:packages
+docker push $IMAGE:$VLLM_VERSION
+docker push $IMAGE:latest
+```
+
+[`.trivyignore`](.trivyignore) lists the accepted findings: copies of `msgpack`/`setuptools` vendored *inside pip itself* (`pip/_vendor`), which are not importable at runtime. The real runtime packages are patched in the Dockerfile.
 
 ## Getting the published digest
 
-Deployments should pin the image **by digest** (e.g. in the Helm chart). After each successful run, the pushed digest is printed in the **job summary** ($GITHUB_STEP_SUMMARY) on the workflow run page.
-
-You can also retrieve it at any time:
+Deployments should pin the image **by digest** (e.g. in the Helm chart). `docker push` prints the digest on completion; you can also retrieve it at any time:
 
 ```bash
 docker buildx imagetools inspect ghcr.io/erios-project/infer-audio:v0.27.1
@@ -56,5 +68,4 @@ The audio extra version **must match exactly** the vLLM version of the base imag
    ```
 2. Update the `FROM vllm/vllm-openai@sha256:...` line with the new digest.
 3. Update the pip line to `"vllm[audio]==X.Y.Z"`.
-4. Update `VLLM_VERSION` in `.github/workflows/build.yml` so the image tag follows.
-5. Push to `main` — the pipeline builds, scans and (if clean) publishes the new image.
+4. Run the build/scan/push procedure above with `VLLM_VERSION=vX.Y.Z` — push only if the scan passes.
