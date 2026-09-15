@@ -7,9 +7,9 @@ The official `vllm/vllm-openai` image does not ship the audio extras, which forc
 ## Image
 
 - **Registry:** `ghcr.io/erios-project/infer-audio`
-- **Tags:** `v0.27.1` (matches the vLLM version) and `latest`
-- **Base image:** `vllm/vllm-openai` **v0.27.1**, pinned by digest (`sha256:0a51ea5b...`) in the [Dockerfile](Dockerfile)
-- **Added on top of the base:** `vllm[audio]==0.27.1` extras and `librosa`
+- **Tags:** `v0.29.0` (matches the vLLM version) and `latest`
+- **Base image:** `vllm/vllm-openai` **v0.29.0**, pinned by digest (`sha256:c2914767...`) in the [Dockerfile](Dockerfile)
+- **Added on top of the base:** `vllm[audio]==0.29.0` extras and `librosa`
 - **Runtime user:** non-root, uid/gid `10001:10001`
 - **Entrypoint/CMD:** inherited unchanged from the base image (OpenAI-compatible API server)
 
@@ -19,10 +19,10 @@ The image is built, scanned and pushed manually from a workstation. The Trivy sc
 
 ```bash
 IMAGE=ghcr.io/erios-project/infer-audio
-VLLM_VERSION=v0.27.1
+VLLM_VERSION=v0.29.0
 
-# 1. Build
-docker build -t $IMAGE:$VLLM_VERSION -t $IMAGE:latest .
+# 1. Build (target is x86_64 + NVIDIA; --platform is required when building from an Apple Silicon Mac)
+docker build --platform linux/amd64 -t $IMAGE:$VLLM_VERSION -t $IMAGE:latest .
 
 # 2. Scan (blocks on any fixable CRITICAL/HIGH vulnerability)
 docker run --rm \
@@ -40,16 +40,16 @@ docker push $IMAGE:$VLLM_VERSION
 docker push $IMAGE:latest
 ```
 
-[`.trivyignore`](.trivyignore) lists the accepted findings: copies of `msgpack`/`setuptools` vendored *inside pip itself* (`pip/_vendor`), which are not importable at runtime. The real runtime packages are patched in the Dockerfile.
+[`.trivyignore`](.trivyignore) is empty: there are no accepted findings. `pip` is removed from the image in the Dockerfile because the latest release still vendors vulnerable copies of `msgpack`/`setuptools` under `pip/_vendor`; the real runtime packages shipped by the base image are already patched.
 
 ## Getting the published digest
 
 Deployments should pin the image **by digest** (e.g. in the Helm chart). `docker push` prints the digest on completion; you can also retrieve it at any time:
 
 ```bash
-docker buildx imagetools inspect ghcr.io/erios-project/infer-audio:v0.27.1
+docker buildx imagetools inspect ghcr.io/erios-project/infer-audio:v0.29.0
 # or
-crane digest ghcr.io/erios-project/infer-audio:v0.27.1
+crane digest ghcr.io/erios-project/infer-audio:v0.29.0
 ```
 
 Then deploy as:
