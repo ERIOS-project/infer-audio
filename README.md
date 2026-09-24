@@ -7,9 +7,9 @@ The official `vllm/vllm-openai` image does not ship the audio extras, which forc
 ## Image
 
 - **Registry:** `ghcr.io/erios-project/infer-audio`
-- **Tags:** `v0.29.0` (matches the vLLM version) and `latest`
-- **Base image:** `vllm/vllm-openai` **v0.29.0**, pinned by digest (`sha256:c2914767...`) in the [Dockerfile](Dockerfile)
-- **Added on top of the base:** `vllm[audio]==0.29.0` extras and `librosa`
+- **Tags:** `v0.30.0` (matches the vLLM version) and `latest`
+- **Base image:** `vllm/vllm-openai` **v0.30.0**, pinned by digest (`sha256:8a69ffad...`) in the [Dockerfile](Dockerfile)
+- **Added on top of the base:** `vllm[audio]==0.30.0` extras and `librosa`
 - **Runtime user:** non-root, uid/gid `10001:10001`
 - **Entrypoint/CMD:** inherited unchanged from the base image (OpenAI-compatible API server)
 
@@ -19,7 +19,7 @@ The image is built, scanned and pushed manually from a workstation. The Trivy sc
 
 ```bash
 IMAGE=ghcr.io/erios-project/infer-audio
-VLLM_VERSION=v0.29.0
+VLLM_VERSION=v0.30.0
 
 # 1. Build (target is x86_64 + NVIDIA; --platform is required when building from an Apple Silicon Mac)
 docker build --platform linux/amd64 -t $IMAGE:$VLLM_VERSION -t $IMAGE:latest .
@@ -47,9 +47,9 @@ docker push $IMAGE:latest
 Deployments should pin the image **by digest** (e.g. in the Helm chart). `docker push` prints the digest on completion; you can also retrieve it at any time:
 
 ```bash
-docker buildx imagetools inspect ghcr.io/erios-project/infer-audio:v0.29.0
+docker buildx imagetools inspect ghcr.io/erios-project/infer-audio:v0.30.0
 # or
-crane digest ghcr.io/erios-project/infer-audio:v0.29.0
+crane digest ghcr.io/erios-project/infer-audio:v0.30.0
 ```
 
 Then deploy as:

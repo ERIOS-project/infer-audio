@@ -1,7 +1,7 @@
 # vLLM serving image with audio extras preinstalled, for audio models served by vLLM.
-# Base pinned by digest — this is vllm/vllm-openai:v0.29.0.
+# Base pinned by digest — this is vllm/vllm-openai:v0.30.0.
 # When upgrading vLLM: update this digest AND the vllm[audio]==X.Y.Z version below together.
-FROM vllm/vllm-openai@sha256:c2914767605584b6d8f45686b82de173ecc99e781897aa3d0a66dacd72c51ae1
+FROM vllm/vllm-openai@sha256:8a69ffad015f138d7170c4ddc429e230a3bc1c1719f67e14324749df200a4b90
 
 # Audio dependencies. The extra version MUST match the vLLM version of the base image.
 # pip is then removed from the image: it is never invoked at runtime, and the latest
@@ -9,7 +9,7 @@ FROM vllm/vllm-openai@sha256:c2914767605584b6d8f45686b82de173ecc99e781897aa3d0a6
 # and setuptools 70.3.0 (CVE-2025-47273) under pip/_vendor. The real runtime packages
 # shipped by the base are already patched (msgpack 1.2.2, setuptools 80.10.2).
 # `uv` remains available in the image if a package manager is ever needed.
-RUN pip install --no-cache-dir "vllm[audio]==0.29.0" librosa \
+RUN pip install --no-cache-dir "vllm[audio]==0.30.0" librosa \
     && pip uninstall -y pip \
     && rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.12
 
